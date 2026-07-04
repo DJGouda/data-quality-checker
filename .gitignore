@@ -1,0 +1,20 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# AWS SAM build output
+.aws-sam/
+
+# Environment and secrets
+.env
+.env.*
+
+# macOS
+.DS_Store
+
+# Keys
+*.pem
+*.ppk

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Data Quality Platform</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <p class="eyebrow">CSCI 4149 · CLOUD-NATIVE DATA PLATFORM</p>
+      <h1>Data Quality Validation Platform</h1>
+      <p class="subtitle">
+        Upload a CSV dataset, validate it asynchronously on AWS, and inspect
+        completeness, uniqueness, validity, duplicates, and missing values.
+      </p>
+      <div class="stack">API Gateway · S3 · SQS · Lambda · DynamoDB · CloudWatch</div>
+    </section>
+
+    <section class="card">
+      <div class="heading-row">
+        <div>
+          <h2>New validation job</h2>
+          <p>Files upload directly to S3 using a temporary presigned URL.</p>
+        </div>
+        <span id="systemStatus" class="pill ready">READY</span>
+      </div>
+
+      <div class="upload-row">
+        <input id="fileInput" type="file" accept=".csv,text/csv">
+        <button id="uploadButton">Upload and Validate</button>
+      </div>
+      <p id="message">Choose a CSV file to begin.</p>
+    </section>
+
+    <section id="jobCard" class="card hidden">
+      <div class="heading-row">
+        <div>
+          <h2>Current job</h2>
+          <p id="jobId" class="mono"></p>
+        </div>
+        <span id="jobStatus" class="pill">WAITING</span>
+      </div>
+      <div class="progress"><div id="progressBar"></div></div>
+    </section>
+
+    <section id="metrics" class="metric-grid hidden">
+      <article class="metric featured"><span>Overall Quality</span><strong id="overall">—</strong></article>
+      <article class="metric"><span>Completeness</span><strong id="completeness">—</strong></article>
+      <article class="metric"><span>Uniqueness</span><strong id="uniqueness">—</strong></article>
+      <article class="metric"><span>Validity</span><strong id="validity">—</strong></article>
+    </section>
+
+    <section id="reportCard" class="card hidden">
+      <div class="heading-row">
+        <div>
+          <h2>Validation report</h2>
+          <p id="fileName"></p>
+        </div>
+        <button id="downloadButton" class="secondary">Download JSON</button>
+      </div>
+
+      <div class="report-grid">
+        <div>
+          <h3>Dataset summary</h3>
+          <dl>
+            <div><dt>Rows</dt><dd id="rows">—</dd></div>
+            <div><dt>Columns</dt><dd id="columns">—</dd></div>
+            <div><dt>Duplicate rows</dt><dd id="duplicates">—</dd></div>
+            <div><dt>Missing values</dt><dd id="missing">—</dd></div>
+          </dl>
+        </div>
+        <div>
+          <h3>Detected issues</h3>
+          <div id="issues"></div>
+        </div>
+      </div>
+
+      <details>
+        <summary>View full JSON</summary>
+        <pre id="rawReport"></pre>
+      </details>
+    </section>
+
+    <section class="card">
+      <div class="heading-row">
+        <div>
+          <h2>Validation history</h2>
+          <p>Latest jobs stored in DynamoDB.</p>
+        </div>
+        <button id="refreshButton" class="secondary">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>File</th><th>Status</th><th>Quality</th><th>Created</th></tr></thead>
+          <tbody id="historyBody"><tr><td colspan="4">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

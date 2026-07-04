@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Cloud-Native Data Quality Validation Platform - Phase 4 end-to-end pipeline
+
+Parameters:
+  LabRoleArn:
+    Type: String
+    Description: ARN of the AWS Academy Learner Lab LabRole
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Architectures: [x86_64]
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+  DataQualityApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      CorsConfiguration:
+        AllowOrigins: ['*']
+        AllowHeaders: [content-type]
+        AllowMethods: [GET, POST, OPTIONS]
+
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    DependsOn: ValidationQueuePolicy
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedOrigins: ['*']
+            AllowedMethods: [PUT, GET]
+            AllowedHeaders: ['*']
+            MaxAge: 3000
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteUploadsAfter30Days
+            Status: Enabled
+            Prefix: uploads/
+            ExpirationInDays: 30
+          - Id: DeleteReportsAfter90Days
+            Status: Enabled
+            Prefix: reports/
+            ExpirationInDays: 90
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Event: s3:ObjectCreated:*
+            Queue: !GetAtt ValidationQueue.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: uploads/
+
+  JobsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: job_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: job_id
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+
+  ValidationDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 1209600
+      SqsManagedSseEnabled: true
+
+  ValidationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 360
+      MessageRetentionPeriod: 345600
+      SqsManagedSseEnabled: true
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ValidationDLQ.Arn
+        maxReceiveCount: 3
+
+  ValidationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref ValidationQueue]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: !GetAtt ValidationQueue.Arn
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+  CreateUploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/create_upload/
+      Handler: app.lambda_handler
+      Role: !Ref LabRoleArn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          JOBS_TABLE: !Ref JobsTable
+          UPLOAD_BUCKET: !Ref UploadBucket
+      Events:
+        CreateUpload:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DataQualityApi
+            Path: /uploads
+            Method: POST
+
+  GetJobFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_job/
+      Handler: app.lambda_handler
+      Role: !Ref LabRoleArn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          JOBS_TABLE: !Ref JobsTable
+      Events:
+        GetJob:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DataQualityApi
+            Path: /jobs/{job_id}
+            Method: GET
+
+  ListJobsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/list_jobs/
+      Handler: app.lambda_handler
+      Role: !Ref LabRoleArn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          JOBS_TABLE: !Ref JobsTable
+      Events:
+        ListJobs:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DataQualityApi
+            Path: /jobs
+            Method: GET
+
+  GetReportFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_report/
+      Handler: app.lambda_handler
+      Role: !Ref LabRoleArn
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          JOBS_TABLE: !Ref JobsTable
+          UPLOAD_BUCKET: !Ref UploadBucket
+          CACHE_TTL_SECONDS: "60"
+      Events:
+        GetReport:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DataQualityApi
+            Path: /reports/{job_id}
+            Method: GET
+
+  HealthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/health/
+      Handler: app.lambda_handler
+      Role: !Ref LabRoleArn
+      Timeout: 10
+      MemorySize: 128
+      Events:
+        Health:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref DataQualityApi
+            Path: /health
+            Method: GET
+
+  ValidationWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/worker/
+      Handler: app.lambda_handler
+      Role: !Ref LabRoleArn
+      Timeout: 60
+      MemorySize: 1024
+      Layers:
+        - arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python312:29
+      Environment:
+        Variables:
+          JOBS_TABLE: !Ref JobsTable
+          UPLOAD_BUCKET: !Ref UploadBucket
+      Events:
+        ValidationQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ValidationQueue.Arn
+            BatchSize: 1
+            FunctionResponseTypes: [ReportBatchItemFailures]
+
+  WorkerErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm when the validation worker reports Lambda errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ValidationWorkerFunction
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  DLQMessagesAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Alarm when failed validation messages reach the DLQ
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ValidationDLQ.QueueName
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${DataQualityApi}.execute-api.${AWS::Region}.amazonaws.com"
+  UploadBucketName:
+    Value: !Ref UploadBucket
+  JobsTableName:
+    Value: !Ref JobsTable
+  ValidationQueueUrl:
+    Value: !Ref ValidationQueue
+  ValidationDLQUrl:
+    Value: !Ref ValidationDLQ
