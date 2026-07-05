@@ -4,6 +4,8 @@ A serverless, event-driven data quality platform that validates uploaded CSV dat
 
 The project began as a synchronous FastAPI/Pandas prototype and was re-architected into a cloud-native AWS workflow using API Gateway, Lambda, S3, SQS, DynamoDB, CloudWatch, and AWS SAM.
 
+### Note: This README.md is AI-Generated!!!
+
 ---
 
 ## Live Application
@@ -13,7 +15,7 @@ Frontend: deployed as a static site on Render.
 > Replace this placeholder with your final Render URL before submission.
 
 ```text
-https://YOUR-APP.onrender.com
+https://cloud-data-quality-platform.onrender.com/
 ```
 
 The frontend communicates directly with the deployed AWS API Gateway backend.
@@ -245,9 +247,7 @@ and deployed using AWS SAM.
 │   ├── api-load-tests.js
 │   └── k6-results.txt
 │
-├── docs/
-│   └── runbook.md
-│
+├── runbook.md
 ├── template.yaml
 ├── samconfig.toml
 ├── README.md
@@ -785,7 +785,7 @@ The final architecture improves scalability, reliability, observability, and fai
 
 ## Documentation
 
-`docs/runbook.md` contains:
+`runbook.md` contains:
 
 - startup procedures,
 - health checks,
