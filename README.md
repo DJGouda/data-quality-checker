@@ -625,7 +625,7 @@ The local frontend still calls the deployed AWS backend.
 Set:
 
 ```bash
-export API_URL="https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com"
+export API_URL="https://API_ID.execute-api.us-east-1.amazonaws.com"
 ```
 
 Health:
