@@ -4,7 +4,7 @@ A serverless, event-driven data quality platform that validates uploaded CSV dat
 
 The project began as a synchronous FastAPI/Pandas prototype and was re-architected into a cloud-native AWS workflow using API Gateway, Lambda, S3, SQS, DynamoDB, CloudWatch, and AWS SAM.
 
-### Note: This README.md is AI-Generated!!!
+### Note: This README.md is AI-Generated and edited accordingly by me!!
 
 ---
 
