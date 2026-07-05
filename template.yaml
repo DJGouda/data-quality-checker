@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Cloud-Native Data Quality Validation Platform - Phase 4 end-to-end pipeline
+Description: Cloud-Native Data Quality Validation Platform
 
 Parameters:
   LabRoleArn:
