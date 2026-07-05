@@ -12,8 +12,6 @@ The project began as a synchronous FastAPI/Pandas prototype and was re-architect
 
 Frontend: deployed as a static site on Render.
 
-> Replace this placeholder with your final Render URL before submission.
-
 ```text
 https://cloud-data-quality-platform.onrender.com/
 ```
@@ -587,7 +585,7 @@ Example:
 
 ```javascript
 window.APP_CONFIG = {
-  API_URL: "https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com"
+  API_URL: "https://API_ID.execute-api.us-east-1.amazonaws.com"
 };
 ```
 
